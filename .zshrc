@@ -11,7 +11,6 @@ umask 002
 # ---[ ZSH Options ]----------------------------------------------------
 # General
 setopt ALWAYS_TO_END BASH_AUTO_LIST NO_BEEP CLOBBER
-# setopt AUTO_CD CD_ABLE_VARS MULTIOS
 
 # Job Control
 setopt CHECK_JOBS NO_HUP
@@ -24,6 +23,11 @@ setopt notify pushdtohome
 setopt recexact longlistjobs
 setopt autoresume pushdsilent
 setopt autopushd pushdminus extendedglob rcquotes mailwarning
+
+# If  a  command is issued that can't be executed as a normal command,
+# and the command is the name of a directory, perform the cd command to that
+# directory.
+setopt auto_cd
 unsetopt BG_NICE HUP autoparamslash
 unsetopt beep
 unsetopt correct_all
@@ -35,8 +39,6 @@ export HISTCONTROL=ignoredups
 export HISTSIZE=100000
 export SAVEHIST=100000
 export HISTIGNORE=ls
-
-
 
 # Prompt
 . ~/.zshprompt
@@ -66,12 +68,19 @@ export XDG_DESKTOP_DIR='/tmp'
 export XDG_DOWNLOAD_DIR='/tmp'
 export XDG_VIDEOS_DIR='/tmp'
 export PATH=$PATH:$HOME/github/ghar/bin/
-export GAE_SDK_ROOT=/opt/google-cloud-sdk/platform/google_appengine
-export PYTHONPATH=$GAE_SDK_ROOT/google
+export PYTHONPATH=/google/src/head/depot
 
 eval `dircolors`
 
 # ---[ Alias Section ]-------------------------------------------------
+alias x='fasd_cd -d'
+alias gc='git commit -a -m "fasd"'
+alias patchpanel='/google/data/ro/projects/patchpanel/live/patchpanel'
+alias borgcfg='borgcfg --user=brand-lift-tv --borguser=brand-lift-tv --skip_confirmation'
+alias fileutil='fileutil --gfs_user=brand-lift-tv'
+alias dremel='dremel --output=csv'
+alias work='task project:work.tv next'
+alias btest='/home/build/google3/ads/frontend/tools/blaze/btest'
 alias skype='LD_PRELOAD=/usr/lib32/libv4l/v4l1compat.so skype'
 alias top='top -c'
 alias pastebin='wgetpaste -X'
@@ -79,16 +88,8 @@ alias grin='grin -i'
 alias n='cd ~/nearwoo/nearwoo_home && clear'
 alias p='cd ~/pagewoo_source/src && clear'
 alias r='cd ~/rtb/rtb && clear'
-alias python='python2'
-alias ipython='ipython2'
-alias ipy='ipython2'
-alias py='python2'
-alias p2='python2'
-alias p3='python3'
-alias gd='git diff'
-alias gc='git commit'
-alias gch='git checkout'
-alias v='vim $'
+alias ipy='ipython'
+alias py='ipython'
 alias cd-='cd -'
 alias zup='source ~/.zshrc'
 alias there='cd `xclip -o`'
@@ -98,7 +99,7 @@ alias off='killall -s SIGTERM vim & sudo systemctl poweroff'
 alias bob='ssh alice@bob.askja.de'
 alias oo='libreoffice'
 alias lo='libreoffice'
-alias c='clear'
+alias c='cd . & clear'
 alias ..='cd ..'
 # alias cd..='cd ..'
 alias ...='cd ../..'
@@ -121,11 +122,9 @@ alias lsd='ls -ld *(-/DN)'
 alias lsa='ls -ld .*'
 #alias dog=wcat
 alias a='alsamixer'
+alias t='task'
 # Global aliases -- These do not have to be
-# at the beginning of the command line.
-alias h='head'
-alias t='tail'
-alias g='grep'
+# at the beginning of the command line.\
 alias psg='ps waux | grep -i'
 alias here='nocorrect here'
 alias there='nocorrect . there'
@@ -156,9 +155,12 @@ alias -s lha=unpack
 alias -s py=vim_or_exec
 
 
-# vi like settings: 
 bindkey -v
 bindkey -M viins 'Tab' vi-cmd-mode
+bindkey "^?" backward-delete-char
+bindkey "^W" backward-kill-word
+bindkey "^H" backward-delete-char      # Control-h also deletes the previous char
+bindkey "^U" backward-kill-line
 # bindkey "^[[H" beginning-of-line
 # bindkey "^[[F" end-of-line
 # bindkey "^[[3~" backward-delete-char
@@ -234,7 +236,8 @@ function zle-line-init zle-keymap-select {
 }
 
 
-function chpwd() {
+function
+chpwd() {
     print -Pn "\e]2;%~\a"
 }
 
@@ -305,10 +308,10 @@ function bright () {
     new=$(($current+1))
   elif [[ $1 == 'less' && $current -ne $min ]]; then
     new=$(($current -1))
-  else 
+  else
     new=$(($current))
   fi
-  echo $new | sudo tee $loc >> /dev/null 
+  echo $new | sudo tee $loc >> /dev/null
   #/sys/class/backlight/acpi_video0/brightness >> /dev/null
 }
 
@@ -316,7 +319,7 @@ function zzip {
   if [[ $# -eq 1 ]]; then
     zip -r "$1.zip" $1
   else
-    zip "$*"; 
+    zip "$*";
   fi
 }
 
@@ -340,10 +343,10 @@ setopt pushdminus
 
 compctl -f -k'directory pattern' lg
 function lg() {
-  if [[ $# -eq 1 ]]; then 
+  if [[ $# -eq 1 ]]; then
     ls -1 | grep -i $1
   fi
-  if [[ $# -eq 2 ]]; then 
+  if [[ $# -eq 2 ]]; then
     ls -1 $1 | grep -i $2
   fi
 }
@@ -364,5 +367,21 @@ bindkey . rationalise-dot
 bindkey "^[[A" history-beginning-search-backward
 bindkey "^[[B" history-beginning-search-forward
 # unset config_file
-#
-#
+
+##################################
+#fasd! https://github.com/clvv/fasd
+eval "$(fasd --init auto)"
+alias v='f -e vim'
+##################################
+
+git() { if [[ $1 == 'merge' ]]; then echo 'Use git5 merge, not git merge. git merge does not understand how to merge the READONLY link and it can corrupt your branch, so stay away from it.  type "unset -f git" to remove this warning'; else command git "$@"; fi; }
+
+source /etc/bash_completion.d/g4d
+
+# Blaze command line completion for zsh
+#cache-path must exist
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path ~/.zsh/cache
+# If you only want to complete local directories in git5, uncomment the next line
+export BLAZE_COMPLETION_PACKAGE_PATH=%workspace%
+
